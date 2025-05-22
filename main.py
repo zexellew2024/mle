@@ -22,7 +22,7 @@ def create_spark_session():
     return spark
 
 def init_datamart():
-    for layer in ["datamart/bronze", "datamart/silver", "datamart/gold", "preview"]:
+    for layer in ["datamart/bronze", "datamart/silver", "datamart/gold"]:
         os.makedirs(layer, exist_ok=True)
 
 if __name__ == "__main__":

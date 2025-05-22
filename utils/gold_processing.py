@@ -1,5 +1,3 @@
-# utils/gold_processing.py
-
 import os
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -27,11 +25,6 @@ def build_label_store(spark, dpd_cutoff=30, mob_cutoff=6) -> DataFrame:
     os.makedirs("datamart/gold/label_store", exist_ok=True)
     label_df.write.mode("overwrite").parquet("datamart/gold/label_store")
     print("✅ Saved label store to datamart/gold/label_store")
-
-    # CSV preview
-    os.makedirs("preview", exist_ok=True)
-    label_df.toPandas().to_csv("preview/preview_gold_label_store.csv", index=False)
-    print("📁 Preview saved to preview/preview_gold_label_store.csv")
 
     return label_df
 
@@ -214,11 +207,4 @@ def build_feature_store(spark, dpd_cutoff=30, mob_cutoff=6) -> DataFrame:
     final_feat.write.mode("overwrite") \
         .parquet("datamart/gold/feature_store")
 
-    # preview
-    final_feat.toPandas() \
-        .to_csv("eda_outputs/final_gold_ml_feature_store.csv", index=False)
-    print("✅ Saved ML feature store")
-
     return final_feat
-
-
