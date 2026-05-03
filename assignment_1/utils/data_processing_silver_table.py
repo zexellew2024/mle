@@ -99,8 +99,8 @@ def clean(feat_file_name, df):
                 df = df.withColumn(column, col(column).cast(new_type))
                 
         case 'features_attributes':
-            cols_to_drop = ['Name', 'SSN']  # These cols not useful for ML, drop
-            df = df.drop(*cols_to_drop) 
+            df = df.drop('Name') # Not useful for ML
+            df = df.drop('SSN')  # Should not be used - privacy
 
             # For age, do some validation. Remove _, then only keep those within 1 to 100. None for the rest.
             df = clean_numeric(df, 'Age', IntegerType(), 1, 100)
@@ -201,11 +201,11 @@ def clean_numeric(df, col_name, targetType, min_val = float('-inf'), max_val = f
     If specified, also ensures the value lies between min and max val.
     Also nullifies values with leading/trailing underscores (e.g., __10000__)
     """
-    # First, check for leading/trailing underscores (red flag)
+    # First, check for leading/trailing underscores
     df = df.withColumn(col_name,
         when(
             col(col_name).rlike(r'^_.*|.*_$'),  # Starts or ends with underscore
-            None  # Nullify immediately
+            None  
         ).otherwise(col(col_name))
     )
     
@@ -217,10 +217,10 @@ def clean_numeric(df, col_name, targetType, min_val = float('-inf'), max_val = f
         ).otherwise(None)
     )
     
-    # Final validation: numeric and within range
     df = df.withColumn(col_name, 
         when(
-            col(col_name).rlike(r'^-?\d+$') & col(col_name).cast(targetType).between(min_val, max_val), 
+            col(col_name).rlike(r'^-?\d+(?:\.\d+)?$') &  # Allows decimals
+            col(col_name).cast(targetType).between(min_val, max_val), 
             col(col_name).cast(targetType)
         ).otherwise(None)
     )
