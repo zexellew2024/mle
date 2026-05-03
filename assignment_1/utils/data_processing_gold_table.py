@@ -14,6 +14,8 @@ import argparse
 from pyspark.sql.functions import col
 from pyspark.sql.types import StringType, IntegerType, FloatType, DateType
 
+from utils.constants import GOLD_FEAT_DIR, SILVER_FEAT_DIR, FEATURE_FILENAMES
+
 
 def process_labels_gold_table(snapshot_date_str, silver_loan_daily_directory, gold_label_store_directory, spark, dpd, mob):
     
@@ -45,3 +47,51 @@ def process_labels_gold_table(snapshot_date_str, silver_loan_daily_directory, go
     print('saved to:', filepath)
     
     return df
+
+def process_features_gold_table(snapshot_date_str, spark):
+    
+    # prepare arguments
+    snapshot_date = datetime.strptime(snapshot_date_str, "%Y-%m-%d")
+
+    return_dict = {}
+
+    dataframes = {}
+    for feat_file_name in FEATURE_FILENAMES:
+    
+        # connect to silver table
+        partition_name = f"silver_{feat_file_name}" + snapshot_date_str.replace('-','_') + '.parquet'
+        filepath = SILVER_FEAT_DIR + partition_name
+        df = spark.read.parquet(filepath)
+        print('loaded from:', filepath, 'row count:', df.count())
+
+        # For the interest of predicting new customers, following features to be removed, as these might lead to data leakage.
+        leakage_cols = [
+            'Num_of_Delayed_Payment',    # How many payments were late
+            'Delay_from_due_date',       # Days late 
+            'Outstanding_Debt',          # Debt at default time
+            'Payment_of_Min_Amount',     # Whether minimum was paid
+        ]
+
+        df = df.drop(*leakage_cols)
+        
+        dataframes[feat_file_name] = df
+
+    df_list = list(dataframes.values())
+
+    # Start with the first dataframe and join with the rest
+    df_gold = df_list[0]
+    for i in range(1, len(df_list)):
+        df_gold = df_gold.join(
+            df_list[i], 
+            on=["Customer_ID", "snapshot_date"], 
+            how="inner"  
+    )
+
+    print(f'Final gold table row count after joins: {df_gold.count()}')
+    
+    partition_name = "gold_feature_store_" + snapshot_date_str.replace('-','_') + '.parquet'
+    filepath = GOLD_FEAT_DIR + partition_name
+    df_gold.write.mode("overwrite").parquet(filepath)
+    print(f'saved to: {filepath}')
+    
+    return df_gold

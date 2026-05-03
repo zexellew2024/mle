@@ -48,7 +48,6 @@ def process_bronze_table_features(snapshot_date_str, spark):
         csv_file_path = f"data/{feat_file_name}.csv"
     
         df = spark.read.csv(csv_file_path, header=True, inferSchema=True).filter(col('snapshot_date') == snapshot_date)
-        print()
         print(snapshot_date_str + '\trow count:', df.count()) 
         
         partition_name = f"bronze_{feat_file_name}" + snapshot_date_str.replace('-','_') + '.csv'
