@@ -66,29 +66,29 @@ bronze_lms_directory = "datamart/bronze/lms/"
 if not os.path.exists(bronze_lms_directory):
     os.makedirs(bronze_lms_directory)
 
-# run bronze backfill
+# # run bronze backfill
 for date_str in dates_str_lst:
     utils.data_processing_bronze_table.process_bronze_table(date_str, bronze_lms_directory, spark)
     utils.data_processing_bronze_table.process_bronze_table_features(date_str, spark)
 
-# create silver datalake
+# # create silver datalake
 silver_loan_daily_directory = "datamart/silver/loan_daily/"
 
 if not os.path.exists(silver_loan_daily_directory):
     os.makedirs(silver_loan_daily_directory)
 
-# run silver backfill
+# # run silver backfill
 for date_str in dates_str_lst:
     utils.data_processing_silver_table.process_silver_table(date_str, bronze_lms_directory, silver_loan_daily_directory, spark)
     utils.data_processing_silver_table.process_silver_table_features(date_str, spark)
 
-# create gold datalake
+# # create gold datalake
 gold_label_store_directory = "datamart/gold/label_store/"
 
 if not os.path.exists(gold_label_store_directory):
     os.makedirs(gold_label_store_directory)
 
-# run gold backfill
+# # run gold backfill
 for date_str in dates_str_lst:
     utils.data_processing_gold_table.process_labels_gold_table(date_str, silver_loan_daily_directory, gold_label_store_directory, spark, dpd = 30, mob = 6)
     utils.data_processing_gold_table.process_features_gold_table(date_str, spark)
@@ -96,7 +96,7 @@ for date_str in dates_str_lst:
 folder_path = gold_label_store_directory
 files_list = [folder_path+os.path.basename(f) for f in glob.glob(os.path.join(folder_path, '*'))]
 df = spark.read.option("header", "true").parquet(*files_list)
-print("row_count:",df.count())
+print("label_store row_count:",df.count())
 
 df.show()
 
@@ -106,7 +106,15 @@ gold_feature_store_directory = "datamart/gold/feature_store/"
 feature_files = [gold_feature_store_directory + os.path.basename(f) 
                  for f in glob.glob(os.path.join(gold_feature_store_directory, '*'))]
 df_features = spark.read.parquet(*feature_files)
+print("feature_store row_count:", df_features.count())
 df_features.show()
 
+# Integration
+gold_loans_directory = "datamart/gold/"
+utils.data_processing_gold_table.feature_label_integration(df_features, df)
 
+gold_loans = spark.read.parquet(gold_loans_directory + "gold_loans.parquet")
+print("feature + label integrated row_count", gold_loans.count())
+gold_loans.show()
+print("done.")
     
