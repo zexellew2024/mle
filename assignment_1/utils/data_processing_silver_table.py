@@ -112,6 +112,19 @@ def clean(feat_file_name, df):
                     trim(col('Occupation'))               # Keep trimmed value
                 ).otherwise(None)                         # Set to null if has multiple underscores
             )
+
+            distinct_occupations = df.filter(col('Occupation').isNotNull()) \
+                                 .select('Occupation') \
+                                 .distinct() \
+                                 .rdd.flatMap(lambda x: x) \
+                                 .collect()
+        
+            # Create a column for each occupation (1 if matches, 0 otherwise)
+            for occupation in distinct_occupations:
+                # Create a valid column name (replace spaces/special chars with underscore)
+                col_name = f"is_{occupation.replace(' ', '_').replace('-', '_')}"
+                df = df.withColumn(col_name, 
+                                   when(col('Occupation') == occupation, 1).otherwise(0).cast(IntegerType()))
             
         case 'features_financials':
 
